@@ -12,6 +12,7 @@ import os
 import time
 import base64
 import queue
+import random
 import requests
 import threading
 import matplotlib.pyplot as plt
@@ -35,7 +36,7 @@ for i in range(N):
     xq.put(i)
     plot_queue.put(0.0)
 
-yaxis_range = (-5, 5)
+yaxis_range = (-10, 10)
 # init figure
 # plt.axis([0, 100, -10, 10])
 plt.ion()
@@ -91,8 +92,7 @@ def snapshot_from_video(video_path, dest_path, snapshot_interval=None):
     """
     video_name = os.path.split(video_path)[-1].split('.')[0]
     print("video name: ", video_name)
-    print("Press Enter to continue...")
-    cv2.waitkey()
+    input("Press Enter to continue...")
 
     # Read the video from specified path
     cam = cv2.VideoCapture(video_path)
@@ -142,6 +142,7 @@ def capture_specific_time_frames_from_video(video_path, time_series, dest_path, 
     """
     不好用，越到后面误差越大
     :param video_path: path of video
+    :param dest_path: path to save frame
     :param time_series: 截取的时间点序列
     :param extend_time: 前后扩展的时间，如截取时间点是23秒，扩展时间为2秒，则截取21-25秒这四秒的内容
     :param rotate_angle: 画面旋转角度，如果需要顺时针旋转90度才能使图像正过来，则输入90
@@ -337,11 +338,10 @@ def play_video(video_path):
         print("Error opening video file")
         
     print("Ready...")
+    x = None
     while cap.isOpened():
-        # time.sleep(0.01)
         # Capture frame-by-frame
         ret, frame = cap.read()
-        x = None
         if ret:
             current_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
             
@@ -355,20 +355,12 @@ def play_video(video_path):
                 buffered = BytesIO()
                 image.save(buffered, format="JPEG")
                 img_str = base64.b64encode(buffered.getvalue())
+                # create a thread to post image to predict server and get result
                 x = threading.Thread(target=post_to_predict, args=(img_str,))
                 x.start()
             
             # Display the resulting frame
             cv2.imshow('Frame', frame)
-            # print("Current frame: ", current_frame)
-            
-            # # Press Q on keyboard to  exit
-            # if cv2.waitKey(25) & 0xFF == ord('q'):
-            #     break
-            #
-            # # Press Q on keyboard to  exit
-            # if cv2.waitKey(25) & 0xFF == ord('p'):
-            #     print("Target Frame: {}".center(50, '='))
         
         # Break the loop
         else:
@@ -410,6 +402,36 @@ def image_cutter(img, area):
     # (It will not change orginal image)
     cut_img = img.crop((left, top, right, bottom))
 
+    # Shows the image in image viewer
+    # cut_img.show()
+    
+    return cut_img
+
+
+def image_cutter_with_random_shifting(img, area, max_shifting=30):
+    # im = Image.open(img_path)
+    
+    # Size of the image in pixels (size of orginal image)
+    # (This is not mandatory)
+    width, height = img.size
+    
+    x_shifting = random.randint(-max_shifting, max_shifting)
+    y_shifting = random.randint(-max_shifting, max_shifting)
+    
+    print("x shifting: {}\ny shifting: {}".format(x_shifting, y_shifting))
+    
+    # Setting the points for cropped image, add a random shifting
+    left = width * area['left'] + x_shifting
+    top = height * area['top'] + y_shifting
+    right = width * area['right'] + x_shifting
+    bottom = height * area['bottom'] + y_shifting
+    
+    print("clac size: {} * {}".format(right - left, bottom - top))
+    
+    # Cropped image of above dimension
+    # (It will not change orginal image)
+    cut_img = img.crop((left, top, right, bottom))
+    
     # Shows the image in image viewer
     # cut_img.show()
     

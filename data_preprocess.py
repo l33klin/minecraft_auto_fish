@@ -8,13 +8,14 @@
 @File    : data_preprocess.py
 """
 import os
+import getpass
 from PIL import Image
-from utils import image_cutter
+from utils import image_cutter, image_cutter_with_random_shifting
 
-user = 'klin'
+user = getpass.getuser()
 
 raw_path = "/Users/{}/Nextcloud/Documents/MineCraft/2020-02-26/raw_dataset".format(user)
-dest_path = "/Users/{}/Nextcloud/Documents/MineCraft/2020-02-26/dataset".format(user)
+dest_path = "/Users/{}/Nextcloud/Documents/MineCraft/2020-02-26/dataset2".format(user)
 
 area_ratio = {
     "left": 13 / 32,
@@ -38,11 +39,22 @@ def walk_path(path):
             if name.startswith('.') or not name.endswith(".jpg"):
                 continue
             raw = os.path.join(root, name)
+            
+            # cut image with raw ratio
             dest = os.path.join(root.replace(raw_path, dest_path), name)
             img = Image.open(raw)
             cut_img = image_cutter(img, area_ratio)
             cut_img.save(dest)
             print("{} -> {}".format(raw, dest))
+            
+            # expend data with random shift
+            expend_times = 2
+            for i in range(expend_times):
+                new_name = name.replace(".jpg", "_shift_{}.jpg".format(i+1))
+                dest = os.path.join(root.replace(raw_path, dest_path), new_name)
+                cut_img = image_cutter_with_random_shifting(img, area_ratio)
+                cut_img.save(dest)
+                print("{} -> {}".format(raw, dest))
 
 
 walk_path(raw_path)
